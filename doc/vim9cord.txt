@@ -1,0 +1,20 @@
+*vim9cord* *vim9cord.vim* *vim9cord.txt* Vim9script plugin for Discord RPC
+
+License: MIT
+URL: https://github.com/LunarWatcher/vim9cord
+
+================================================================================
+Table of contents~
+
+    1. Introduction ........... |vim9cord-intro|
+
+================================================================================
+1. Introduction                                                   *vim9cord-intro*
+
+Vim9cord is a pure |vim9script|-based implementation of Discord RPC. 
+
+================================================================================
+2. Use 
+
+
+vim:ft=help:tw=80
