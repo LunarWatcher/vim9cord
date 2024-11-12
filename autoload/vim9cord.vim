@@ -46,7 +46,8 @@ def CloseChannel(channel: any)
     g:Vim9cordSock = 0
 enddef
 
-def ConnectSock()
+def ConnectSock(): bool
+    # Kill the existing socket before trying to reconnect
     if exists("g:Vim9cordSock") && g:Vim9cordSock != 0
         ch_close(g:Vim9cordSock)
     endif
@@ -60,7 +61,7 @@ def ConnectSock()
         })
     catch
         # Discord not online; the socket will fail quietly
-        return
+        return false
     endtry
 
     # Handshake
@@ -78,8 +79,11 @@ def ConnectSock()
     if response["op"] == 1 && json_decode(response["body"])["evt"] == "READY"
         g:Vim9cordConnected = 1
     else
-        echoerr "Failed to connect to Discord (but socket exists):" response
+        echom "Failed to connect to Discord (but socket exists):" response
+        return false
     endif
+
+    return true
     
 enddef
 
@@ -143,7 +147,7 @@ def SockSend(cmd: string, extraArgs: dict<any>)
         }->extend(extraArgs),
         "nonce": GenNonce(32)
     })
-    echom json
+    # echom json
 
     SockSendHeader(json->len())
     g:Vim9cordSock->ch_sendraw(json)
@@ -157,7 +161,9 @@ export def UpdateStatus()
     endif
 
     if !exists("g:Vim9cordConnected") || g:Vim9cordConnected == 0
-        ConnectSock()
+        if ConnectSock() == false
+            return
+        endif
     endif
 
     # The previous statement is not a guarantee Vim9cordConnected == 1
