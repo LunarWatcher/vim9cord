@@ -1,0 +1,17 @@
+name: Tests
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Versions
+        run: vim --version
+      - name: Run tests
+        run: |
+          vim -c "try | helptags doc | catch | echoerr v:exception | endtry | qa" -c "cq"
