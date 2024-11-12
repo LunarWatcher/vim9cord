@@ -6,15 +6,143 @@ URL: https://github.com/LunarWatcher/vim9cord
 ================================================================================
 Table of contents~
 
-    1. Introduction ........... |vim9cord-intro|
+    1. Introduction .................... |vim9cord-intro|
+    2. Usage ........................... |vim9cord-usage|
+    3. Config options .................. |vim9cord-config|
+    4. Commands ........................ |vim9cord-commands|
+        4.1. (Re)connect ............... |:Vim9cordReconnect|
+        4.2. Toggle Vim9cord ........... |:Vim9cordToggle|
 
 ================================================================================
 1. Introduction                                                   *vim9cord-intro*
 
-Vim9cord is a pure |vim9script|-based implementation of Discord RPC. 
+Vim9cord is a pure |vim9script|-based implementation of Discord RPC, based on
+|channel|s.
+
+Currently, only the following OSes/install options are supported:
+* Linux:
+    * Native install, such as through apt. However, any native package manager
+      should be supported out-of-the-box. Sandboxing package managers (Flatpak,
+      snap, etc.) are not currently supported
+
+If you have an unsupported configuration, Vim9cord should (hopefully) just not
+connect and not cause any problems - it just won't actually do anything, which
+is by design.
+
+If you want your configuration to be supported, please consider opening a PR.
+With Windows as the possibly only exception, it should just be a matter of
+conditionally setting a string to a different value.
 
 ================================================================================
-2. Use 
+2. Usage                                                          *vim9cord-usage*
 
+When installed, Vim9cord automatically connects.
+
+Should you need to reconnect, you can use |:Vim9cordReconnect|
+
+================================================================================
+3. Config options                                                *vim9cord-config*
+
+Index:
+* |g:Vim9cordEnabled| (default: 1)
+* |g:Vim9cordAppID| (default: see entry)
+*vim9cord-privacy*
+* |g:Vim9cordShowLang| (default: 1)
+* |g:Vim9cordShowWorkspace| (default: 0)
+
+
+                                                                *g:Vim9cordEnabled*
+Defines whether or not Vimcord will send requests. Note that setting this at
+runtime has no effect; if you want to toggle Vim9cord at runtime, use
+|:Vim9cordToggle|. This variable only prevents Vim9cord from starting up if set
+to 0. Toggling Vim9cord off requires disconnecting the socket, which requires
+more than just toggling a variable.
+
+Default:~
+    1
+Type:~
+    Boolean
+
+                                                                 *g:Vim9cordAppID*
+Defines the Discord app ID to use.
+Can be set to your own app ID if you prefer, but this is not required.
+Default:~
+    "1305581900370280550"
+Type:~
+    String
+
+
+                                                         *g:Vim9cordShowWorkspace*
+Whether or not to show the workspace name in the rich presence entry.
+Default:~
+    0
+Type:~
+    Boolean
+
+                                                              *g:Vim9cordShowLang*
+Whether or not to show the language (|'filetype'|) in the rich presence entry.
+Primarily just shows the raw `&ft`, but can be configured to show an English
+name instead of the internal filetype name. By default, some (but far from all)
+filetypes have been mapped. See [TBA]
+Default:~
+    1
+Type:~
+    Boolean
+
+================================================================================
+4. Commands                                                    *vim9cord-commands*
+
+--------------------------------------------------------------------------------
+4.1. (Re)connect                                              *:Vim9cordReconnect*
+
+To manually reconnect, you can run `:Vim9cordReconnect`. Note that this normally
+won't be required; if you disconnect, Vim9cord will attempt to reconnect every
+time you switch buffers.
+
+--------------------------------------------------------------------------------
+4.2. Toggle Vim9cord                                             *:Vim9cordToggle*
+
+To toggle Vimcord, you can run `:Vim9cordToggle`. See also |g:Vim9cordEnabled|
+to set the default state when starting Vim.
+
+================================================================================
+5. FAQ                                                              *vim9cord-faq*
+
+--------------------------------------------------------------------------------
+5.1. Why aren't there language images?                           *vim9cord-images*
+
+Aside the default Vim logo, not having language logos is an intentional decision
+to increase maintainability. There are a couple main reasons for this:
+1. Because of how Discord apps work, only the app owner can actually upload
+    assets. This is also a very manual process, so it can't trivially be
+    automated.
+
+    This means that if there's a need to switch to a different `client_id` at
+    some point for any reason whatsoever (|g:Vim9cordAppID|), setting up a
+    potentially large number of language images is a considerable amount of
+    work.
+2. If I were to set it up in a somewhat reusable way, that would require finding
+    a large number of open logos. Copyright and licensing exists on logos too,
+    including in the Vim logo used as the only image asset.
+
+    As a sidenote, that image is licensed under the GNU GPL license, as per 
+    https://commons.wikimedia.org/wiki/File:Vimlogo.svg
+          
+    Simply put, doing a lot of images in a way that can be swapped over if the
+    rich presence app I have set up dies, and while making sure everything is
+    properly attributed is a nightmare, and I just don't want to.
+
+    The real-world benefit is also, arguably, non-existent.
+
+Also, as a minor tangent, only 300 assets can be associated with rich presence.
+While that does sound like a lot, trust me, it really isn't. Just this project
+has a grand total of 5 different filetypes (help, vim, gitignore, markdown, and
+LICENSE, which is technically a blank filetype, but could be handled in a
+special way if someone really wanted to), and my proper projects often have
+more. One of the more extreme examples have approximately 12 (C++, CMake, CSS,
+HTML, Mustache, JS, Shell, Markdown, Gitignore, yaml, JSON, ini (`.service`)),
+which burns through 4% of the quota right there. If you also account for
+metabuffers (including at least 4 different commonly used file browsers, stuff
+like fzf, undotree, vista, etc.), those 300 assets fly out fast.
 
 vim:ft=help:tw=80
