@@ -1,5 +1,7 @@
 vim9script
 
+import autoload "vim9cord/Utils.vim" as utils
+
 var OP_HANDSHAKE = 0
 var OP_FRAME = 1
 var OP_CLOSE = 2
@@ -13,7 +15,12 @@ export def Init()
 
     # If multiple OSes are supported, this is where the socket location needs
     # to be changed to support whatever else
-    g:Vim9cordSocketLocation = "unix:" .. $XDG_RUNTIME_DIR .. "/discord-ipc-0"
+    #
+    # This if statement is redundant, but left for future compatibility
+    # reasons
+    if has("linux")
+        g:Vim9cordSocketLocation = "unix:" .. $XDG_RUNTIME_DIR .. "/discord-ipc-0"
+    endif
 
     if !exists("g:Vim9cordShowLang")
         g:Vim9cordShowLang = 1
@@ -38,7 +45,19 @@ def StripPrefix(path: string): string
 enddef
 
 def SockCallback(channel: any, msg: string)
-    echom "Global callback:" msg
+    # This has to be readblob
+    var response = utils.DecodeResponse(
+       utils.Str2Blob(msg)
+    )
+    # echom "Received" msg response
+    var json = json_decode(response["body"])
+    if response["op"] == 1 && json["cmd"] == "DISPATCH"
+        if json["evt"] == "READY"
+            # echom "Connected to Discord"
+            g:Vim9cordConnected = 1
+            UpdateStatus()
+        endif
+    endif
 enddef
 
 def CloseChannel(channel: any)
@@ -46,9 +65,9 @@ def CloseChannel(channel: any)
     g:Vim9cordSock = 0
 enddef
 
-def ConnectSock(): bool
+def ConnectSock()
     # Kill the existing socket before trying to reconnect
-    if exists("g:Vim9cordSock") && g:Vim9cordSock != 0
+    if exists("g:Vim9cordSock") && type(g:Vim9cordSock) != v:t_number
         ch_close(g:Vim9cordSock)
     endif
     try
@@ -60,8 +79,9 @@ def ConnectSock(): bool
             "timeout": 300
         })
     catch
-        # Discord not online; the socket will fail quietly
-        return false
+        # Discord not online; the socket will fail quietly due to the
+        # try-catch
+        return
     endtry
 
     # Handshake
@@ -70,69 +90,15 @@ def ConnectSock(): bool
         "client_id": g:Vim9cordAppID
     })
     SockSendHeader(len(json), 0)
+    # I'm not sure if this needs a timeout or not, but better error recovery
+    # systems may be needed here
     g:Vim9cordSock->ch_sendraw(json)
-
-    # This has to be readblob
-    var response = DecodeResponse(
-        g:Vim9cordSock->ch_readblob()
-    )
-    if response["op"] == 1 && json_decode(response["body"])["evt"] == "READY"
-        g:Vim9cordConnected = 1
-    else
-        echom "Failed to connect to Discord (but socket exists):" response
-        return false
-    endif
-
-    return true
-    
 enddef
 
-def GenNonce(n: number): string
-  var ret = ""
-  for i in range(n)
-    var c = nr2char(char2nr('a') + (rand() % 26))
-    ret ..= c
-  endfor
-  return ret
-enddef
-
-def ToLittleEndian(n: number): list<number>
-    return [
-        n % 256,
-        n / 256 % 256,
-        n / 65536 % 256,
-        n / 16777216 % 256
-    ]
-enddef
-
-def FromLittleEndian(num: blob): number
-    return num[0] + num[1] * 256 + num[2] * 65536 + num[3] * 16777216
-enddef
-
-def Blob2Str(blob: blob): string
-    var str = ""
-    for byte in blob
-        str ..= nr2char(byte)
-    endfor
-
-    return str
-enddef
-
-def DecodeResponse(raw: blob): dict<any>
-    var op = FromLittleEndian(raw[0 : 3])
-    var len = FromLittleEndian(raw[4 : 7])
-
-    var body = Blob2Str(raw[8 : 8 + len])
-    return {
-        "op": op,
-        "len": len,
-        "body": body
-    }
-enddef
 
 def SockSendHeader(payloadLength: number, op: number = OP_FRAME)
 
-    var payload = list2blob(ToLittleEndian(op)->extend(ToLittleEndian(payloadLength)))
+    var payload = list2blob(utils.ToLittleEndian(op)->extend(utils.ToLittleEndian(payloadLength)))
     # echom payload
     g:Vim9cordSock->ch_sendraw(
         payload
@@ -145,7 +111,7 @@ def SockSend(cmd: string, extraArgs: dict<any>)
         "args": {
             "pid": getpid()
         }->extend(extraArgs),
-        "nonce": GenNonce(32)
+        "nonce": utils.GenNonce(32)
     })
     # echom json
 
@@ -153,6 +119,22 @@ def SockSend(cmd: string, extraArgs: dict<any>)
     g:Vim9cordSock->ch_sendraw(json)
 enddef
 
+def GetDetailsAndState(): dict<any>
+    var out = {}
+    if g:Vim9cordShowWorkspace == 1
+        out["details"] = "Workspace: " .. fnamemodify(getcwd(), ":t")
+    endif
+    if g:Vim9cordShowLang == 1
+        var ft = &ft
+        # TODO: separate file types from certain special buffers, so there can
+        # be stuff like "browsing for files" and shit
+        if ft != ""
+            out["state"] = "Editing a " .. ft .. " file"
+        endif
+    endif
+    # echom out
+    return out
+enddef
 
 export def UpdateStatus()
     # Socket doesn't exist; abort
@@ -160,18 +142,17 @@ export def UpdateStatus()
         return
     endif
 
+    # TODO: use ch_status
     if !exists("g:Vim9cordConnected") || g:Vim9cordConnected == 0
-        if ConnectSock() == false
-            return
-        endif
+        # The socket needs to connect, which happens async
+        ConnectSock()
+        return
     endif
 
     # The previous statement is not a guarantee Vim9cordConnected == 1
     if g:Vim9cordConnected
         SockSend("SET_ACTIVITY", {
             "activity": {
-                "details": "Content goes here",
-                "state": "Content goes here too :)",
                 "timestamps": {
                     "start": g:Vim9cordStartTime
                 },
@@ -179,7 +160,7 @@ export def UpdateStatus()
                     "large_image": "vim",
                     "large_text": "Vim - the greatest editor of all time"
                 }
-            }
+            }->extend(GetDetailsAndState())
         })
     endif
 
