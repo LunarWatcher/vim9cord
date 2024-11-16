@@ -70,3 +70,9 @@ export def DecodeResponse(raw: blob): dict<any>
         "body": body
     }
 enddef
+
+export def IsConnected(sock: any): bool
+    return (type(sock) == v:t_channel 
+        && ch_status(sock) == "open"
+    )
+enddef

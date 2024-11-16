@@ -6,12 +6,21 @@ URL: https://github.com/LunarWatcher/vim9cord
 ================================================================================
 Table of contents~
 
-    1. Introduction .................... |vim9cord-intro|
-    2. Usage ........................... |vim9cord-usage|
-    3. Config options .................. |vim9cord-config|
-    4. Commands ........................ |vim9cord-commands|
-        4.1. (Re)connect ............... |:Vim9cordReconnect|
-        4.2. Toggle Vim9cord ........... |:Vim9cordToggle|
+    1. Introduction ......................................................... |vim9cord-intro|
+        1.1. Features ....................................................... |vim9cord-features|
+    2. Usage ................................................................ |vim9cord-usage|
+        2.1. Concepts ....................................................... |vim9cord-concepts|
+    3. Config options ....................................................... |vim9cord-config|
+    4. Commands ............................................................. |vim9cord-commands|
+        4.1. (Re)connect .................................................... |:Vim9cordReconnect|
+        4.2. Toggle Vim9cord ................................................ |:Vim9cordToggle|
+        4.3. Disconnect Vim9cord ............................................ |:Vim9cordDisconnect|
+    5. Interface functions .................................................. |vim9cord-functions|
+        5.1. AddActivities .................................................. |vim9cord#AddActivities|
+        5.2. AddActivityMaps ................................................ |vim9cord#AddActivityMaps|
+    6. FAQ .................................................................. |vim9cord-faq|
+        6.1. Why aren't there language images? .............................. |vim9cord-images|
+        6.2. Vim9cord doesn't work with multiple instances of Vim ........... |vim9cord-faq-instances|
 
 ================================================================================
 1. Introduction                                                   *vim9cord-intro*
@@ -33,12 +42,61 @@ If you want your configuration to be supported, please consider opening a PR.
 With Windows as the possibly only exception, it should just be a matter of
 conditionally setting a string to a different value.
 
+--------------------------------------------------------------------------------
+1.1. Features                                                  *vim9cord-features*
+
+Vim9cord has a couple main features aside the obvious connecting to Discord and
+showing Vim as the current activity:
+* Defaults that try to avoid showing any more than a bare minimum of
+    information. This is primarily for privacy reasons.
+    Additionally, aside showing the current working directory (disabled by
+    default) or showing the file language (enabled by default), no extra
+    information about what's being edited is even supported. 
+
+    This is an intentional decision, as Discord and privacy is already
+    questionable at best. You can shoehorn some of this in with your own scripts
+    and |g:Vim9cordAltDetails| if you really don't care about privacy.
+* Pure vim9script, so no external dependencies required (aside Discord, of
+    course)
+* Custom button support (|g:Vim9cordButtons|) for use with whatever you want to 
+    script or hardcode
+* Fails fast, quietly, and async to avoid blocking the editor or getting in the
+    way when Discord inevitably does something stupid, if you run your config 
+    on machines without Discord, or if you run your config on a system with an
+    unsupported OS or unsupported Discord installation method.
+    This plugin is purely a nice-to-have, and should ideally never, ever bother
+    you.
+
 ================================================================================
 2. Usage                                                          *vim9cord-usage*
 
-When installed, Vim9cord automatically connects.
+When installed, Vim9cord automatically connects if you're using a compatible OS
+and a compatible Discord version.
 
 Should you need to reconnect, you can use |:Vim9cordReconnect|
+
+--------------------------------------------------------------------------------
+2.1. Concepts                                                  *vim9cord-concepts*
+
+Vim9cord has a few (potentially non-standard?) concepts used in its
+configuration. They're listed here for context.
+
+Activity~
+An activity in the context of vim9cord is a loose description of a thing you're
+doing in Vim. It's not a reference to a Discord activity, but refers to the
+contents of the status field when |g:Vim9cordShowLang| is enabled. 
+
+Rather than just showing a default "Editing a <filetype> file", an activity
+refers to non-standard descriptions. As an example of a built-in activity, if
+you open a file explorer in Vim, Vim9cord shows "Browsing files" instead.
+There's a similar setup with "Writing documentation", and a couple text-based
+filetypes.
+
+Configuration of which filetypes trigger which activity, as well as which
+activities exist can be done using |g:Vim9cordActivityMaps| and
+|g:Vim9cordActivities| respectively, as well as associated functions linked from
+their helpfile entries.
+
 
 ================================================================================
 3. Config options                                                *vim9cord-config*
@@ -46,9 +104,15 @@ Should you need to reconnect, you can use |:Vim9cordReconnect|
 Index:
 * |g:Vim9cordEnabled| (default: 1)
 * |g:Vim9cordAppID| (default: see entry)
+* |g:Vim9cordButtons| (default: see doc entry)
+* |g:Vim9cordActivities| (default: changes. See source code)
+* |g:Vim9cordActivityMaps| (default: changes. See source code)
+* |g:Vim9cordAltDetails| (default: '<esc>wqa!')
 *vim9cord-privacy*
 * |g:Vim9cordShowLang| (default: 1)
 * |g:Vim9cordShowWorkspace| (default: 0)
+* |g:Vim9cordShowAltDetails| (default: the opposite of whatever
+    |g:Vim9cordShowWorkspace| is)
 
 
                                                                 *g:Vim9cordEnabled*
@@ -71,6 +135,79 @@ Default:~
 Type:~
     String
 
+                                                               *g:Vim9cordButtons*
+A list of up to two buttons. Example format: >
+    let g:Vim9cordButtons = [
+        {
+            "label": "something",
+            "url": "https://www.youtube.com/watch?v=yRKh34Ofg50"
+        }
+    ]
+<
+
+As per: https://discord.com/developers/docs/events/gateway-events#activity-object-activity-buttons
+
+WARNING: The buttons are not visible to you by default. Discord, in their
+infinite wisdom, decided to hide it from yourself:
+    https://github.com/jojo2357/Music-Discord-Rich-Presence/issues/98#issuecomment-2240108499
+I've been unable to find an official source for this, but that comment seems to
+check out. Everyone that isn't you should be able to see the buttons. If you
+want to verify, check on a different account (alt account, ask a friend, etc.).
+If you do not see the buttons on your own account, please do not open a bug
+report - verify on a different account first.
+
+Default:~
+    [{"label": "Vim9cord", "url": "https://github.com/LunarWatcher/vim9cord"}]
+
+    (Note that this default is primarily there as a proof-of-concept. You're
+     welcome to replace it with v:null or purely your own buttons if you prefer)
+Type:~
+    List<Dict<String, String>>
+
+                                                            *g:Vim9cordActivities*
+Contains a list of activities (|vim9cord-concepts|) in the format: >
+    { "activity key": "What's displayed on Discord" }
+<
+
+YOU SHOULD NOT MODIFY THIS VARIABLE DIRECTLY
+Use |vim9cord#AddActivities| instead.
+
+WARNING: If you ignore this advice and hard-code your own, the map MUST contain
+a `fallback` key. This is used for all filetypes that aren't in any activity
+maps, as defined by |g:Vim9cordActivityMaps|
+
+The value part of the key-value pair can optionally contain a `%s` to insert the
+current filetype.
+
+Default:~
+    See the source code
+Type:~
+    Dict<String, String>
+
+                                                          *g:Vim9cordActivityMaps*
+Defines a map in the format: >
+    { "activity, as defined in |g:Vim9cordActivities|": ["list", "of", "filetypes"] }
+<
+
+
+YOU SHOULD NOT MODIFY THIS VARIABLE DIRECTLY
+Use |vim9cord#AddActivityMaps| instead.
+
+Default:~
+    See the source code
+Type:~
+    Dict<String, List<String>>
+
+                                                            *g:Vim9cordAltDetails*
+Defines a string to insert when |g:Vim9cordShowAltDetails|
+
+By default, this is a hard-coded string, but there's nothing preventing you from
+updating the global variable on the fly if you want something more dynamic.
+
+Default:~
+    See the source code
+Type:~
+    List<String>
 
                                                          *g:Vim9cordShowWorkspace*
 Whether or not to show the workspace name in the rich presence entry.
@@ -78,16 +215,31 @@ Default:~
     0
 Type:~
     Boolean
+Mutually exclusive with:~
+    |g:Vim9cordShowAltDetails|
 
                                                               *g:Vim9cordShowLang*
 Whether or not to show the language (|'filetype'|) in the rich presence entry.
-Primarily just shows the raw `&ft`, but can be configured to show an English
-name instead of the internal filetype name. By default, some (but far from all)
-filetypes have been mapped. See [TBA]
+by default, this just shows the raw |'filetype'|, though some special filetypes
+show special activities.
+
+See |vim9cord-concepts|, |g:Vim9cordActivities|, and |g:Vim9cordActivityMaps|
+for activity configuration.
 Default:~
     1
 Type:~
     Boolean
+
+                                                        *g:Vim9cordShowAltDetails*
+Whether or not to show |g:Vim9cordAltDetails|. 
+
+Default:~
+    The opposite of |g:Vim9cordShowWorkspace|
+    (with all default options, this means the default is 1)
+Type:~
+    Boolean
+Mutually exclusive with:~
+    |g:Vim9cordShowWorkspace|
 
 ================================================================================
 4. Commands                                                    *vim9cord-commands*
@@ -105,11 +257,69 @@ time you switch buffers.
 To toggle Vimcord, you can run `:Vim9cordToggle`. See also |g:Vim9cordEnabled|
 to set the default state when starting Vim.
 
+--------------------------------------------------------------------------------
+4.3. Disconnect Vim9cord                                      *:Vim9cordDisconnect*
+
+NOT TO BE CONFUSED WITH TOGGLE
+For actually permanently disconnecting Vim9cord, use |:Vim9cordToggle|. 
+
+This command is primarily a debug utility, and instantly disconencts the socket.
+However, it does NOT toggle vim9cord! If Vim9cord is manually enabled, or was
+enabled prior to this command, any event that triggers Vim9cord to issue an
+update and reconnect the socket.
+
+Unless you have a very specific reason to use this command in particular, you
+probably want |:Vim9cordToggle| instead.
+
 ================================================================================
-5. FAQ                                                              *vim9cord-faq*
+5. Interface functions                                        *vim9cord-functions*
 
 --------------------------------------------------------------------------------
-5.1. Why aren't there language images?                           *vim9cord-images*
+5.1. AddActivities                                        *vim9cord#AddActivities*
+
+Note: requires |g:Vim9cordShowLang| to be enabled.
+
+If you want to add a new activity, or change an existing activity, use this
+function. Example: >
+    call vim9cord#AddActivities({
+        "your_special_activity": "Look at all the pretty colours in this %s file",
+        "your_other_activity": "%s? More like ewwwwww"
+    })
+<
+
+Note that for custom activities to appear, you must use
+|vim9cord#AddActivityMaps| to create a corresponding entry. See
+|vim9cord#AddActivityMaps| for an example using both functions.
+
+--------------------------------------------------------------------------------
+5.2. AddActivityMaps                                    *vim9cord#AddActivityMaps*
+
+Note: requires |g:Vim9cordShowLang| to be enabled.
+
+This function is used to add activity maps to new or existing keys.
+The format of the input dict is: >
+    {"activity key": ["filetype1", "filetype2", ...], "activity key 2": [...]}
+<
+Note: If you define a key that already exists, the list will append to the
+existing values. It will NOT replace existing maps. If you want to replace the
+default, this is not currently possible, and it will not be implemented until
+there's a need for it. Open an issue if you really need this.
+
+Combined example for this and |vim9cord#AddActivities|: >
+    call vim9cord#AddActivities({
+                \ "experimenting": "Look at all the pretty colours in this %s file"
+                \ })
+    call vim9cord#AddActivityMaps({
+                \ "filetree": ["cpp"], " Appends cpp to the existing filetree key
+                \ "experimenting": ["java"] " Since experimenting is new and undefined, this sets the entire experimenting map list to just java. You can add multiple keys here as well
+                \ })
+<
+
+================================================================================
+6. FAQ                                                              *vim9cord-faq*
+
+--------------------------------------------------------------------------------
+6.1. Why aren't there language images?                           *vim9cord-images*
 
 Aside the default Vim logo, not having language logos is an intentional decision
 to increase maintainability. There are a couple main reasons for this:
@@ -144,5 +354,32 @@ HTML, Mustache, JS, Shell, Markdown, Gitignore, yaml, JSON, ini (`.service`)),
 which burns through 4% of the quota right there. If you also account for
 metabuffers (including at least 4 different commonly used file browsers, stuff
 like fzf, undotree, vista, etc.), those 300 assets fly out fast.
+
+--------------------------------------------------------------------------------
+6.2. Vim9cord doesn't work with multiple instances of Vim *vim9cord-faq-instances*
+
+Status~
+    Wontfix
+Type~
+    Discord-based problems
+
+Discord doesn't work particularly well with multiple instances of anything. This
+is a known bug and a wontfix, because the workaround is to just not send
+anything when the window is closed.
+
+This means that if, for example, you switch back and forth between Vim and the
+terminal, you'd end up in a situation where you're playing vim, then you're not
+playing anything, then back to vim, then nothing, and I'd argue that's worse. 
+
+It's worth noting that nothing bad happens when multiple instances are used.
+Discord just quietly discards extra SET_ACTIVITY events from other Vim instances
+on the same client_id.
+
+Reading material~
+* https://github.com/discord/discord-rpc/issues/202
+    Closed, "moved to feedback site" but the feedback site URL is a 404
+    Resolution:~
+        "Implement it yourself", exceedingly complex
+
 
 vim:ft=help:tw=80
