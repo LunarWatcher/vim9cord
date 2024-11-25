@@ -62,7 +62,7 @@ export def Init()
     endif
 
     if !exists("g:Vim9cordAltDetails")
-        g:Vim9cordAltDetails = '<esc>wqa!'
+        g:Vim9cordAltDetails = '<esc>:wqa!'
     endif
 
 enddef

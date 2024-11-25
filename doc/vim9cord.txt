@@ -107,7 +107,7 @@ Index:
 * |g:Vim9cordButtons| (default: see doc entry)
 * |g:Vim9cordActivities| (default: changes. See source code)
 * |g:Vim9cordActivityMaps| (default: changes. See source code)
-* |g:Vim9cordAltDetails| (default: '<esc>wqa!')
+* |g:Vim9cordAltDetails| (default: ':<esc>wqa!')
 *vim9cord-privacy*
 * |g:Vim9cordShowLang| (default: 1)
 * |g:Vim9cordShowWorkspace| (default: 0)
@@ -205,7 +205,7 @@ By default, this is a hard-coded string, but there's nothing preventing you from
 updating the global variable on the fly if you want something more dynamic.
 
 Default:~
-    See the source code
+    '\<esc>:wqa!'
 Type:~
     List<String>
 
