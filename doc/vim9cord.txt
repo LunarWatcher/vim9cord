@@ -33,6 +33,7 @@ Currently, only the following OSes/install options are supported:
     * Native install, such as through apt. However, any native package manager
       should be supported out-of-the-box. Sandboxing package managers (Flatpak,
       snap, etc.) are not currently supported
+* macOS
 
 If you have an unsupported configuration, Vim9cord should (hopefully) just not
 connect and not cause any problems - it just won't actually do anything, which
