@@ -15,7 +15,9 @@ export def Init()
     #
     # This if statement is redundant, but left for future compatibility
     # reasons
-    if has("linux")
+    if has("mac")
+        g:Vim9cordSocketLocation = "unix:" .. $TMPDIR .. "discord-ipc-0"
+    elseif has("linux")
         g:Vim9cordSocketLocation = "unix:" .. $XDG_RUNTIME_DIR .. "/discord-ipc-0"
     endif
 
