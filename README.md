@@ -2,6 +2,8 @@
 
 Vim9cord is a pure vim9script plugin for Discord rich presence.
 
+As of 2026-03-08, this plugin is no longer maintained. Due to [AI slop in vim](https://hachyderm.io/@AndrewRadev/116175986749599825), I have moved to emacs with evil mode.
+
 ## Requirements
 
 Currently, only Linux with non-Flatpak/non-Snap discord and macOS are supported. **This plugin will not work on Windows** - but on unsupported platforms or with unsupported Discord installations, it should quietly error out. If you'd like this to change, consider submitting a pull request.
